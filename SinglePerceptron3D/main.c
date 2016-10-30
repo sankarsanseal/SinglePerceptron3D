@@ -12,6 +12,7 @@
 #include <math.h>
 #include <GLUT/glut.h>
 #include <unistd.h>
+#include <float.h>
 
 
 double w[4];
@@ -22,6 +23,14 @@ double *ylabel;
 int n;
 int current=-1;
 double eta=0.3;
+double percentage=0;
+double maxx=DBL_MIN;
+double maxy=DBL_MIN;
+double maxz=DBL_MIN;
+double maxall=DBL_MIN;
+int init_display=0;
+int noOfIteration=100;
+int noOfLoops=1000;
 
 double xy[4][2]=
 {
@@ -98,6 +107,10 @@ void show()
 {
     int i,j;
     double z[4];
+    noOfLoops=1000;
+    while(noOfLoops)
+    {
+        noOfLoops--;
     glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
     
     glPointSize(5.0);
@@ -105,14 +118,15 @@ void show()
     
     glLoadIdentity();
     
-    gluLookAt(	20 , 20, 20,
+    
+    gluLookAt(	(int)maxall*2 , (int)maxall*2, (int)maxall*2,
               0, 0,  0,
               0.0f, 1.0f,  0.0f);
     
     glBegin(GL_LINES);
     glColor3d(1, 0, 0);
     glVertex3d(0, 0, 0);
-    glVertex3d(20, 0, 0);
+    glVertex3d((int)maxall*2, 0, 0);
     
     
     
@@ -122,7 +136,7 @@ void show()
     
     glColor3d(0, 1, 0);
     glVertex3d(0, 0, 0);
-    glVertex3d(0, 20, 0);
+    glVertex3d(0,(int)maxall*2, 0);
     
     
     
@@ -133,14 +147,14 @@ void show()
     
     glColor3d(0, 0, 1);
     glVertex3d(0, 0, 0);
-    glVertex3d(0, 0, 20);
+    glVertex3d(0, 0, (int)maxall*2);
     
     glEnd();
 
     
    glBegin(GL_POINTS);
     
-    for(i=0;i<n;i++)
+    for(i=0;i<(int)((double)n*percentage);i++)
     {
         //fprintf(stdout, " i:%d c:%d\n",i , current);
         if(i!=current)
@@ -166,11 +180,17 @@ void show()
     
     glEnd();
     
-    current++;
-    if(current==n)
+    while(noOfIteration > 0)
+    {
+        current++;
+        if(current>=(int)((double)n*percentage))
         current=0;
     
-    UpdateW();
+        UpdateW();
+        noOfIteration--;
+    }
+    if(noOfIteration==0)
+        noOfIteration=50;
     
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -182,19 +202,29 @@ void show()
         
     }
     
-    glBegin(GL_QUADS);
-    glColor3d(0.75, 0.75, 0.75);
-    
-    for(i=0;i<4;i++)
+    if(init_display==1)
     {
-        glVertex3d(xy[i][0], xy[i][1], z[i]);
+        glBegin(GL_QUADS);
+        glColor3d(0.75, 0.75, 0.75);
+        
+        for(i=0;i<4;i++)
+        {
+            glVertex3d(xy[i][0], xy[i][1], z[i]);
+        }
+        
+        glEnd();
+        glutSwapBuffers();
+        
+    }
+    else
+    {
+        init_display=1;
+        glutSwapBuffers();
+        sleep(3);
     }
     
-    glEnd();
+    }
 
-    //sleep(1);
-    
-    glutSwapBuffers();
 }
 
 void reshape(int w, int h)
@@ -227,35 +257,67 @@ int main(int argc, const char * argv[]) {
     int i,j;
     char direction='\0';
     double chance=0;
+    int found=0;
+    double distance=0;
     
     srand(time(NULL));
     
     fprintf(stdout,"Enter the number of patterns:");
-    fscanf(stdin,"%d", &n);
+    fscanf(stdin,"%d%*c", &n);
+    fprintf(stdout,"Enter the percentage of whole set:");
+    fscanf(stdin,"%lf%*c", &percentage);
+    if ( percentage > 100)
+        percentage=100;
+    percentage/=100;
     
-    for(i=0;i<2;i++)
+    while(!found)
     {
-        for(j=0;j<3;j++)
+        distance=0;
+        for(i=0;i<2;i++)
         {
-            if(j==0)
-                direction='x';
-            else if(j==1)
-                direction='y';
-            else if(j==2)
-                direction='z';
-            fprintf(stdout,"Enter the mean of class %d along %c axis:",i+1,direction);
-            fscanf(stdin,"%lf%*c",&mu[i][j]);
+            for(j=0;j<3;j++)
+            {
+                /*if(j==0)
+                 direction='x';
+                 else if(j==1)
+                 direction='y';
+                 else if(j==2)
+                 direction='z';
+                 fprintf(stdout,"Enter the mean of class %d along %c axis:",i+1,direction);
+                 fscanf(stdin,"%lf%*c",&mu[i][j]);*/
+                mu[i][j]=(double)(rand()%20);
+                
+                /*fprintf(stdout,"Enter the standard deviation of class %d along %c axis:", i+1,direction);
+                 fscanf(stdin, "%lf%*c",&sigma[i][j]);*/
+                sigma[i][j]=((double)(rand()%10)/10);
+            }
             
-            fprintf(stdout,"Enter the standard deviation of class %d along %c axis:", i+1,direction);
-            fscanf(stdin, "%lf%*c",&sigma[i][j]);
         }
         
+        for(j=0;j<3;j++)
+            distance+=pow((mu[0][j]-mu[1][j]),2);
+        distance=sqrt(distance);
+        for(i=0;i<3;i++)
+            for(j=0;j<3;j++)
+            {
+                if(distance<= sigma[0][i]+sigma[1][j])
+                {
+                    found=0;
+                }
+                else
+                {
+                    found=1;
+                }
+            }
     }
     
     
     for(i=0;i<4;i++)
     {
         w[i]=(double)(rand()%10)/10;
+        while(w[i]==0)
+            w[i]=(double)(rand()%10)/10;
+        
         fprintf(stdout,"%lf ", w[i]);
         
     }
@@ -287,9 +349,44 @@ int main(int argc, const char * argv[]) {
             {
                 x[i][j]=randn(mu[(int)ylabel[i]][j-1], sigma[(int)ylabel[i]][j-1]);
                // fprintf(stdout, " %d %d %lf\n", i,j,x[i][j]);
+                if(j==1)
+                {
+                    if(maxx< x[i][j])
+                        maxx=x[i][j];
+                }
+                else if (j==2)
+                {
+                    if(maxy < x[i][j])
+                        maxy=x[i][j];
+                }
+                else if (j==3)
+                {
+                    if(maxz < x[i][j])
+                        maxz=x[i][j];
+                }
             }
         
     }
+    
+    if(maxall < maxx)
+        maxall=maxx;
+    if(maxall < maxy)
+        maxall=maxy;
+    if(maxall < maxz)
+        maxall=maxz;
+    
+    
+    xy[0][0]=(int)maxall;
+    xy[0][1]=(int)maxall;
+    xy[1][0]=(int)-maxall;
+    xy[1][1]=(int)maxall;
+    xy[2][0]=(int)-maxall;
+    xy[2][1]=(int)-maxall;
+    xy[3][0]=(int)maxall;
+    xy[3][1]=(int)-maxall;
+
+
+    
     
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGBA|GLUT_DOUBLE|GLUT_DEPTH);
