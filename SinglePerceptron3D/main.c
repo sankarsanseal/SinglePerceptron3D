@@ -50,6 +50,18 @@ double sigmoid(double induced_local)
     return result;
 }
 
+double signum(double induced_local)
+{
+    
+    double result=0;
+    if(induced_local>0)
+        result=1;
+    else
+        result=-1;
+    
+    return result;
+}
+
 double randn (double mu, double sigma)
 {
     double U1, U2, W, mult;
@@ -86,18 +98,49 @@ void UpdateW()
     double induced_local=0;
     double yvalue=0;
     double error=0;
+    int nonzero=0;
+    double change=0;
     
     for(i=0;i<4;i++)
         induced_local+=x[current][i]*w[i];
-    yvalue=sigmoid(induced_local);
+    //yvalue=sigmoid(induced_local);
+    yvalue=signum(induced_local);
     error=ylabel[current]- yvalue;
     //fprintf(stdout,"%lf \n",error);
     for(i=0;i<4;i++)
-        w[i]+=eta*error*yvalue*(1-yvalue)*x[current][i];
+    {
+        change=error*x[current][i];
+        w[i]+=change;
+        if(change == 0 && nonzero==0)
+        {
+            nonzero=0;
+        }
+        else
+        {
+            nonzero=1;
+        }
+    }
     
    // for(i=0;i<4;i++)
      //   fprintf(stdout, "w[%d]:%lf ",i,w[i]);
     //fprintf(stdout, "\n");
+    
+   /* if(nonzero==0)
+    {
+        for(i=0;i<4;i++)
+        {
+            w[i]=(double)(rand()%10)/10;
+            if( rand()%2  ==0)
+                w[i]=-w[i];
+            while(w[i]==0)
+                w[i]=(double)(rand()%10)/10;
+            
+            //fprintf(stdout,"%lf ", w[i]);
+            
+        }
+
+    }*/
+    
     
 }
 
@@ -161,7 +204,7 @@ void show()
         {
             if(ylabel[i]==1.0)
                 glColor3d(1.0, 1.0, 0.0);
-            else if (ylabel[i]==0.0)
+            else if (ylabel[i]==-1.0)
                 glColor3d(0, 1, 1);
         }
         else
@@ -180,17 +223,19 @@ void show()
     
     glEnd();
     
-    while(noOfIteration > 0)
-    {
+//    while(noOfIteration > 0)
+//    {
         current++;
         if(current>=(int)((double)n*percentage))
         current=0;
     
         UpdateW();
+        usleep(250000);
+        
         noOfIteration--;
-    }
-    if(noOfIteration==0)
-        noOfIteration=50;
+//    }
+//    if(noOfIteration==0)
+ //       noOfIteration=50;
     
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -205,7 +250,7 @@ void show()
     if(init_display==1)
     {
         glBegin(GL_QUADS);
-        glColor3d(0.75, 0.75, 0.75);
+        glColor4d(0.75, 0.75, 0.75,0.5);
         
         for(i=0;i<4;i++)
         {
@@ -264,10 +309,14 @@ int main(int argc, const char * argv[]) {
     
     fprintf(stdout,"Enter the number of patterns:");
     fscanf(stdin,"%d%*c", &n);
+    if ( n==0)
+        exit(0);
     fprintf(stdout,"Enter the percentage of whole set:");
     fscanf(stdin,"%lf%*c", &percentage);
     if ( percentage > 100)
         percentage=100;
+    if ( percentage < 0)
+        percentage=0;
     percentage/=100;
     
     while(!found)
@@ -315,9 +364,15 @@ int main(int argc, const char * argv[]) {
     for(i=0;i<4;i++)
     {
         w[i]=(double)(rand()%10)/10;
+        if( rand()%2  ==0)
+            w[i]=-w[i];
         while(w[i]==0)
             w[i]=(double)(rand()%10)/10;
-        
+       /* if ( i== 2)
+            w[i]=0;
+        else
+            w[i]=i+1;
+        */
         fprintf(stdout,"%lf ", w[i]);
         
     }
@@ -340,14 +395,17 @@ int main(int argc, const char * argv[]) {
         if(chance>=0.5)
             ylabel[i]=1;
         else
-            ylabel[i]=0;
+            ylabel[i]=-1;
         
       //  fprintf(stdout, "%lf, %lf\n",chance,ylabel[i]);
         
             x[i][0]=1;
             for(j=1;j<4;j++)
             {
-                x[i][j]=randn(mu[(int)ylabel[i]][j-1], sigma[(int)ylabel[i]][j-1]);
+                if ( ylabel[i] ==1)
+                x[i][j]=randn(mu[1][j-1], sigma[1][j-1]);
+                else if ( ylabel[i] == -1)
+                    x[i][j]=randn(mu[0][j-1], sigma[0][j-1]);
                // fprintf(stdout, " %d %d %lf\n", i,j,x[i][j]);
                 if(j==1)
                 {
@@ -395,6 +453,7 @@ int main(int argc, const char * argv[]) {
     glutCreateWindow("Single Perceptron");
     glutDisplayFunc(show);
     glutReshapeFunc(reshape);
+    //while(sleep(1))
     glutIdleFunc(show);
     
     glutMainLoop();
